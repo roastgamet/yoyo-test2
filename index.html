@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yo-Yo IR1 Test (Official Speed-Based)</title>
+  <meta name="theme-color" content="#0f2027" />
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 { font-size: 2.2rem; }
+    .container {
+      max-width: 580px;
+      margin: auto;
+      background: rgba(0,0,0,0.45);
+      padding: 20px;
+      border-radius: 16px;
+    }
+    .row { margin: 6px 0; font-size: 1.15rem; }
+    button {
+      padding: 12px 16px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin: 6px;
+    }
+    .start { background: #00c853; }
+    .stop { background: #d50000; color: white; }
+    .reset { background: #2962ff; color: white; }
+    .fail { background: #ff9100; color: black; }
+
+    .circle-wrap {
+      width: 200px;
+      height: 200px;
+      margin: 20px auto;
+      position: relative;
+    }
+    svg { transform: rotate(-90deg); }
+    circle { fill: none; stroke-width: 12; stroke-linecap: round; }
+    .bg { stroke: rgba(255,255,255,0.2); }
+    .progress { stroke: #00e5ff; transition: stroke-dashoffset 0.1s linear; }
+    .center-text {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1.6rem;
+    }
+
+    .result {
+      display: none;
+      margin-top: 20px;
+      background: rgba(0,0,0,0.55);
+      padding: 15px;
+      border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🏃 Yo-Yo IR1 (Official)</h1>
+  <div class="container">
+    <div class="row">Level: <span id="level">1.1</span></div>
+    <div class="row">Speed: <span id="speed">10.0</span> km/h</div>
+    <div class="row">Shuttle: <span id="shuttle">1</span> / 2</div>
+    <div class="row">Distance: <span id="distance">0</span> m</div>
+
+    <div class="circle-wrap">
+      <svg width="200" height="200">
+        <circle class="bg" cx="100" cy="100" r="85" />
+        <circle class="progress" cx="100" cy="100" r="85" />
+      </svg>
+      <div class="center-text" id="time">7.20</div>
+    </div>
+
+    <button class="start" onclick="startTest()">Start</button>
+    <button class="stop" onclick="stopTest()">Stop</button>
+    <button class="fail" onclick="failTest()">Fail</button>
+    <button class="reset" onclick="resetTest()">Reset</button>
+
+    <div class="result" id="resultBox">
+      <h2>📊 Result</h2>
+      <p>Final Level: <span id="finalLevel"></span></p>
+      <p>Final Speed: <span id="finalSpeed"></span> km/h</p>
+      <p>Total Distance: <span id="finalDistance"></span> m</p>
+    </div>
+  </div>
+
+  <audio id="beep">
+    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+  </audio>
+
+  <script>
+    /* Official Yo-Yo IR1 speed table (simplified but correct logic)
+       time = 20 / (speed * 1000/3600)
+    */
+    const levels = [
+      { label: '1.1', speed: 10.0 },
+      { label: '1.2', speed: 10.5 },
+      { label: '2.1', speed: 11.0 },
+      { label: '2.2', speed: 11.5 },
+      { label: '3.1', speed: 12.0 },
+      { label: '3.2', speed: 12.5 },
+      { label: '4.1', speed: 13.0 },
+      { label: '4.2', speed: 13.5 },
+      { label: '5.1', speed: 14.0 },
+      { label: '6.1', speed: 15.0 }
+    ];
+
+    let levelIndex = 0;
+    let shuttle = 1;
+    let distance = 0;
+    let interval = getInterval();
+    let remaining = interval;
+    let mainTimer = null;
+    let tickTimer = null;
+
+    const circle = document.querySelector('.progress');
+    const radius = 85;
+    const circumference = 2 * Math.PI * radius;
+    circle.style.strokeDasharray = circumference;
+
+    function getInterval() {
+      const speedMS = levels[levelIndex].speed * 1000 / 3600;
+      return 20 / speedMS;
+    }
+
+    function resetCircle() {
+      interval = getInterval();
+      remaining = interval;
+      circle.style.strokeDashoffset = circumference;
+      document.getElementById('time').innerText = remaining.toFixed(2);
+      document.getElementById('level').innerText = levels[levelIndex].label;
+      document.getElementById('speed').innerText = levels[levelIndex].speed.toFixed(1);
+    }
+
+    function updateCircle() {
+      remaining -= 0.1;
+      if (remaining < 0) remaining = 0;
+      const offset = circumference * (remaining / interval);
+      circle.style.strokeDashoffset = offset;
+      document.getElementById('time').innerText = remaining.toFixed(2);
+    }
+
+    function startTest() {
+      if (mainTimer) return;
+      resetCircle();
+      tickTimer = setInterval(updateCircle, 100);
+
+      mainTimer = setInterval(() => {
+        document.getElementById('beep').play();
+        distance += 20;
+        document.getElementById('distance').innerText = distance;
+
+        if (shuttle === 1) {
+          shuttle = 2;
+        } else {
+          shuttle = 1;
+          levelIndex++;
+          if (levelIndex >= levels.length) levelIndex = levels.length - 1;
+        }
+        document.getElementById('shuttle').innerText = shuttle;
+        resetCircle();
+      }, interval * 1000);
+    }
+
+    function stopTest() {
+      clearInterval(mainTimer);
+      clearInterval(tickTimer);
+      mainTimer = null;
+    }
+
+    function failTest() {
+      stopTest();
+      document.getElementById('finalLevel').innerText = levels[levelIndex].label;
+      document.getElementById('finalSpeed').innerText = levels[levelIndex].speed.toFixed(1);
+      document.getElementById('finalDistance').innerText = distance;
+      document.getElementById('resultBox').style.display = 'block';
+    }
+
+    function resetTest() {
+      stopTest();
+      levelIndex = 0;
+      shuttle = 1;
+      distance = 0;
+      document.getElementById('distance').innerText = distance;
+      document.getElementById('shuttle').innerText = shuttle;
+      document.getElementById('resultBox').style.display = 'none';
+      resetCircle();
+    }
+
+    resetCircle();
+  </script>
+  <link rel="manifest" href="manifest.json">
+
+</body>
+</html>

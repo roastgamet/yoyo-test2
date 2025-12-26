@@ -1,0 +1,24 @@
+{
+  "name": "Yo-Yo Test App",
+  "short_name": "YoYo Test",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#0d6efd",
+  "scope": ".",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["sports", "fitness", "health"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "YOYO.png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "YOYO.png"
+    }
+  ]
+}
